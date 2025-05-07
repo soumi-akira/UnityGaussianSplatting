@@ -280,15 +280,27 @@ namespace GaussianSplatting.Editor
             string pathCol = $"{m_OutputFolder}/{baseName}_col.bytes";
             string pathSh = $"{m_OutputFolder}/{baseName}_shs.bytes";
 
+            NativeArray<byte> chunkData = default;
+            NativeArray<byte> posData = default;
+            NativeArray<byte> otherData = default;
+            NativeArray<byte> colorData = default;
+            NativeArray<byte> shData = default;
+
             // if we are using full lossless (FP32) data, then do not use any chunking, and keep data as-is
             bool useChunks = isUsingChunks;
             if (useChunks)
-                GaussianSplatAssetCreateTask.CreateChunkData(inputSplats, pathChunk, ref dataHash);
-            GaussianSplatAssetCreateTask.CreatePositionsData(m_FormatPos, inputSplats, pathPos, ref dataHash);
-            GaussianSplatAssetCreateTask.CreateOtherData(m_FormatScale, inputSplats, pathOther, ref dataHash, splatSHIndices);
-            GaussianSplatAssetCreateTask.CreateColorData(m_FormatColor, inputSplats, pathCol, ref dataHash);
-            GaussianSplatAssetCreateTask.CreateSHData(m_FormatSH, inputSplats, pathSh, ref dataHash, clusteredSHs);
+                GaussianSplatAssetCreateTask.CreateChunkData(inputSplats, out chunkData, ref dataHash);
+            GaussianSplatAssetCreateTask.CreatePositionsData(m_FormatPos, inputSplats, out posData, ref dataHash);
+            GaussianSplatAssetCreateTask.CreateOtherData(m_FormatScale, inputSplats, out otherData, ref dataHash, splatSHIndices);
+            GaussianSplatAssetCreateTask.CreateColorData(m_FormatColor, inputSplats, out colorData, ref dataHash);
+            GaussianSplatAssetCreateTask.CreateSHData(m_FormatSH, inputSplats, out shData, ref dataHash, clusteredSHs);
             asset.SetDataHash(dataHash);
+
+            if(useChunks) WriteFile(pathChunk, chunkData);
+            WriteFile(pathPos, posData);
+            WriteFile(pathOther, otherData);
+            WriteFile(pathCol, colorData);
+            WriteFile(pathSh, shData);
 
             splatSHIndices.Dispose();
             clusteredSHs.Dispose();
@@ -314,6 +326,13 @@ namespace GaussianSplatting.Editor
             EditorUtility.ClearProgressBar();
 
             Selection.activeObject = savedAsset;
+        }
+
+        void WriteFile(string path, NativeArray<byte> data)
+        {
+            using var fs = new FileStream(path, FileMode.Create, FileAccess.Write);
+            fs.Write(data);
+            data.Dispose();
         }
     }
 }

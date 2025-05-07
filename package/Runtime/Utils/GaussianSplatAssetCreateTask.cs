@@ -305,7 +305,7 @@ namespace GaussianSplatting.Runtime.Utils
             }
         }
 
-        public static void CreateChunkData(NativeArray<InputSplatData> splatData, string filePath, ref Hash128 dataHash)
+        public static void CreateChunkData(NativeArray<InputSplatData> splatData, out NativeArray<byte> posData, ref Hash128 dataHash)
         {
             int chunkCount = (splatData.Length + GaussianSplatAsset.kChunkSize - 1) / GaussianSplatAsset.kChunkSize;
             CalcChunkDataJob job = new CalcChunkDataJob
@@ -318,8 +318,7 @@ namespace GaussianSplatting.Runtime.Utils
 
             dataHash.Append(ref job.chunks);
 
-            using var fs = new FileStream(filePath, FileMode.Create, FileAccess.Write);
-            fs.Write(job.chunks.Reinterpret<byte>(UnsafeUtility.SizeOf<GaussianSplatAsset.ChunkInfo>()));
+            posData = CopyNativeArray(job.chunks.Reinterpret<byte>(UnsafeUtility.SizeOf<GaussianSplatAsset.ChunkInfo>()));
 
             job.chunks.Dispose();
         }
@@ -476,7 +475,7 @@ namespace GaussianSplatting.Runtime.Utils
             return (size + multipleOf - 1) / multipleOf * multipleOf;
         }
 
-        public static void CreatePositionsData(GaussianSplatAsset.VectorFormat format, NativeArray<InputSplatData> inputSplats, string filePath, ref Hash128 dataHash)
+        public static void CreatePositionsData(GaussianSplatAsset.VectorFormat format, NativeArray<InputSplatData> inputSplats, out NativeArray<byte> posData, ref Hash128 dataHash)
         {
             int dataLen = inputSplats.Length * GaussianSplatAsset.GetVectorSize(format);
             dataLen = NextMultipleOf(dataLen, 8); // serialized as ulong
@@ -493,13 +492,12 @@ namespace GaussianSplatting.Runtime.Utils
 
             dataHash.Append(data);
 
-            using var fs = new FileStream(filePath, FileMode.Create, FileAccess.Write);
-            fs.Write(data);
+            posData = CopyNativeArray(data);
 
             data.Dispose();
         }
 
-        public static void CreateOtherData(GaussianSplatAsset.VectorFormat format, NativeArray<InputSplatData> inputSplats, string filePath, ref Hash128 dataHash, NativeArray<int> splatSHIndices)
+        public static void CreateOtherData(GaussianSplatAsset.VectorFormat format, NativeArray<InputSplatData> inputSplats, out NativeArray<byte> otherData, ref Hash128 dataHash, NativeArray<int> splatSHIndices)
         {
             int formatSize = GaussianSplatAsset.GetOtherSizeNoSHIndex(format);
             if (splatSHIndices.IsCreated)
@@ -521,8 +519,7 @@ namespace GaussianSplatting.Runtime.Utils
 
             dataHash.Append(data);
 
-            using var fs = new FileStream(filePath, FileMode.Create, FileAccess.Write);
-            fs.Write(data);
+            otherData = CopyNativeArray(data);
 
             data.Dispose();
         }
@@ -551,7 +548,7 @@ namespace GaussianSplatting.Runtime.Utils
             }
         }
 
-        public static void CreateColorData(GaussianSplatAsset.ColorFormat format, NativeArray<InputSplatData> inputSplats, string filePath, ref Hash128 dataHash)
+        public static void CreateColorData(GaussianSplatAsset.ColorFormat format, NativeArray<InputSplatData> inputSplats, out NativeArray<byte> colorData, ref Hash128 dataHash)
         {
             var (width, height) = GaussianSplatAsset.CalcTextureSize(inputSplats.Length);
             NativeArray<float4> data = new(width * height, Allocator.TempJob);
@@ -573,8 +570,7 @@ namespace GaussianSplatting.Runtime.Utils
                 tex.SetPixelData(data, 0);
                 EditorUtility.CompressTexture(tex, GraphicsFormatUtility.GetTextureFormat(gfxFormat), 100);
                 NativeArray<byte> cmpData = tex.GetPixelData<byte>(0);
-                using var fs = new FileStream(filePath, FileMode.Create, FileAccess.Write);
-                fs.Write(cmpData);
+                colorData = CopyNativeArray(cmpData);
 
                 UnityEngine.Object.DestroyImmediate(tex);
             }
@@ -590,8 +586,7 @@ namespace GaussianSplatting.Runtime.Utils
                     formatBytesPerPixel = dstSize / width / height
                 };
                 jobConvert.Schedule(height, 1).Complete();
-                using var fs = new FileStream(filePath, FileMode.Create, FileAccess.Write);
-                fs.Write(jobConvert.outputData);
+                colorData = CopyNativeArray(jobConvert.outputData);
                 jobConvert.outputData.Dispose();
             }
 
@@ -703,18 +698,17 @@ namespace GaussianSplatting.Runtime.Utils
             }
         }
 
-        static void EmitSimpleDataFile<T>(NativeArray<T> data, string filePath, ref Hash128 dataHash) where T : unmanaged
+        static void EmitSimpleData<T>(NativeArray<T> data, out NativeArray<byte> shData, ref Hash128 dataHash) where T : unmanaged
         {
             dataHash.Append(data);
-            using var fs = new FileStream(filePath, FileMode.Create, FileAccess.Write);
-            fs.Write(data.Reinterpret<byte>(UnsafeUtility.SizeOf<T>()));
+            shData = CopyNativeArray(data.Reinterpret<byte>(UnsafeUtility.SizeOf<T>()));
         }
 
-        public static void CreateSHData(GaussianSplatAsset.SHFormat format, NativeArray<InputSplatData> inputSplats, string filePath, ref Hash128 dataHash, NativeArray<GaussianSplatAsset.SHTableItemFloat16> clusteredSHs)
+        public static void CreateSHData(GaussianSplatAsset.SHFormat format, NativeArray<InputSplatData> inputSplats, out NativeArray<byte> shData, ref Hash128 dataHash, NativeArray<GaussianSplatAsset.SHTableItemFloat16> clusteredSHs)
         {
             if (clusteredSHs.IsCreated)
             {
-                EmitSimpleDataFile(clusteredSHs, filePath, ref dataHash);
+                EmitSimpleData(clusteredSHs, out shData, ref dataHash);
             }
             else
             {
@@ -727,7 +721,7 @@ namespace GaussianSplatting.Runtime.Utils
                     m_Output = data
                 };
                 job.Schedule(inputSplats.Length, 8192).Complete();
-                EmitSimpleDataFile(data, filePath, ref dataHash);
+                EmitSimpleData(data, out shData, ref dataHash);
                 data.Dispose();
             }
         }
@@ -795,6 +789,12 @@ namespace GaussianSplatting.Runtime.Utils
             public float[][] rotation;
             public float fx;
             public float fy;
+        }
+
+        private static NativeArray<byte> CopyNativeArray(NativeArray<byte> org) {
+            NativeArray<byte> dst = new NativeArray<byte>(org.Length, Allocator.Persistent);
+            dst.CopyFrom(org);
+            return dst;
         }
     }
 }
