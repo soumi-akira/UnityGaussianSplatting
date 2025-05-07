@@ -5,6 +5,7 @@ using System.Collections.Generic;
 using System.IO;
 using GaussianSplatting.Editor.Utils;
 using GaussianSplatting.Runtime;
+using GaussianSplatting.Runtime.Utils;
 using Unity.Burst;
 using Unity.Collections;
 using Unity.Collections.LowLevel.Unsafe;
@@ -23,16 +24,6 @@ namespace GaussianSplatting.Editor
         const string kCamerasJson = "cameras.json";
         const string kPrefQuality = "nesnausk.GaussianSplatting.CreatorQuality";
         const string kPrefOutputFolder = "nesnausk.GaussianSplatting.CreatorOutputFolder";
-
-        enum DataQuality
-        {
-            VeryHigh,
-            High,
-            Medium,
-            Low,
-            VeryLow,
-            Custom,
-        }
 
         readonly FilePickerControl m_FilePicker = new();
 
@@ -188,43 +179,13 @@ namespace GaussianSplatting.Editor
 
         void ApplyQualityLevel()
         {
-            switch (m_Quality)
-            {
-                case DataQuality.Custom:
-                    break;
-                case DataQuality.VeryLow: // 18.62x smaller, 32.27 PSNR
-                    m_FormatPos = GaussianSplatAsset.VectorFormat.Norm11;
-                    m_FormatScale = GaussianSplatAsset.VectorFormat.Norm6;
-                    m_FormatColor = GaussianSplatAsset.ColorFormat.BC7;
-                    m_FormatSH = GaussianSplatAsset.SHFormat.Cluster4k;
-                    break;
-                case DataQuality.Low: // 14.01x smaller, 35.17 PSNR
-                    m_FormatPos = GaussianSplatAsset.VectorFormat.Norm11;
-                    m_FormatScale = GaussianSplatAsset.VectorFormat.Norm6;
-                    m_FormatColor = GaussianSplatAsset.ColorFormat.Norm8x4;
-                    m_FormatSH = GaussianSplatAsset.SHFormat.Cluster16k;
-                    break;
-                case DataQuality.Medium: // 5.14x smaller, 47.46 PSNR
-                    m_FormatPos = GaussianSplatAsset.VectorFormat.Norm11;
-                    m_FormatScale = GaussianSplatAsset.VectorFormat.Norm11;
-                    m_FormatColor = GaussianSplatAsset.ColorFormat.Norm8x4;
-                    m_FormatSH = GaussianSplatAsset.SHFormat.Norm6;
-                    break;
-                case DataQuality.High: // 2.94x smaller, 57.77 PSNR
-                    m_FormatPos = GaussianSplatAsset.VectorFormat.Norm16;
-                    m_FormatScale = GaussianSplatAsset.VectorFormat.Norm16;
-                    m_FormatColor = GaussianSplatAsset.ColorFormat.Float16x4;
-                    m_FormatSH = GaussianSplatAsset.SHFormat.Norm11;
-                    break;
-                case DataQuality.VeryHigh: // 1.05x smaller
-                    m_FormatPos = GaussianSplatAsset.VectorFormat.Float32;
-                    m_FormatScale = GaussianSplatAsset.VectorFormat.Float32;
-                    m_FormatColor = GaussianSplatAsset.ColorFormat.Float32x4;
-                    m_FormatSH = GaussianSplatAsset.SHFormat.Float32;
-                    break;
-                default:
-                    throw new ArgumentOutOfRangeException();
-            }
+            if(m_Quality == DataQuality.Custom) return;
+            var res = Quality.GetFormatFromQualityLevel(m_Quality);
+            
+            m_FormatPos = res.FormatPos;
+            m_FormatScale = res.FormatScale;
+            m_FormatColor = res.FormatColor;
+            m_FormatSH = res.FormatSH;
         }
 
 
