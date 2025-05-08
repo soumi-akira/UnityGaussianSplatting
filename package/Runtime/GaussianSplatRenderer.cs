@@ -336,7 +336,7 @@ namespace GaussianSplatting.Runtime
         [field: NonSerialized] public uint editCutSplats { get; private set; }
         [field: NonSerialized] public Bounds editSelectedBounds { get; private set; }
 
-        public IGaussianSplatAsset m_injectedAsset;
+        private IGaussianSplatAsset m_injectedAsset;
 
         public IGaussianSplatAsset asset {
             get {
@@ -377,6 +377,12 @@ namespace GaussianSplatting.Runtime
         public bool HasValidRenderSetup => m_GpuPosData != null && m_GpuOtherData != null && m_GpuChunks != null;
 
         const int kGpuViewDataSize = 40;
+
+        public void InjectAsset(IGaussianSplatAsset injectedAsset)
+        {
+            if(asset != null) asset.Dispose();
+            m_injectedAsset = injectedAsset;
+        }
 
         void CreateResourcesForAsset()
         {
@@ -651,6 +657,7 @@ namespace GaussianSplatting.Runtime
             var curHash = asset != null ? asset.dataHash : new Hash128();
             if (m_PrevAsset != asset || m_PrevHash != curHash)
             {
+                m_PrevAsset?.Dispose();
                 m_PrevAsset = asset;
                 m_PrevHash = curHash;
                 if (resourcesAreSetUp)

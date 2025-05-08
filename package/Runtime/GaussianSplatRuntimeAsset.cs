@@ -49,7 +49,7 @@ namespace GaussianSplatting.Runtime
             m_DataHash = hash;
         }
 
-        public void SetAssetFiles(NativeArray<byte> dataChunk, NativeArray<byte> dataPos, NativeArray<byte> dataOther, NativeArray<byte> dataColor, NativeArray<byte> dataSh)
+        public void setAssetData(NativeArray<byte> dataChunk, NativeArray<byte> dataPos, NativeArray<byte> dataOther, NativeArray<byte> dataColor, NativeArray<byte> dataSh)
         {
             m_SplatChunkData = new GaussianSplatData(dataChunk);
             m_SplatPosData = new GaussianSplatData(dataPos);
@@ -60,6 +60,11 @@ namespace GaussianSplatting.Runtime
 
         public void Dispose()
         {
+            m_SplatPosData?.Dispose();
+            m_SplatColorData?.Dispose();
+            m_SplatOtherData?.Dispose();
+            m_SplatSHData?.Dispose();
+            m_SplatChunkData?.Dispose();
         }
 
         GaussianSplatAsset.VectorFormat m_PosFormat = GaussianSplatAsset.VectorFormat.Norm11;
@@ -90,7 +95,7 @@ namespace GaussianSplatting.Runtime
 
         public class GaussianSplatData : IGaussianSplatData
         {
-          private NativeArray<byte> data;
+          public NativeArray<byte> data;
 
           public GaussianSplatData(NativeArray<byte> data)
           {

@@ -46,19 +46,19 @@ namespace GaussianSplatting.Runtime
             m_FormatSH = res.FormatSH;
         }
 
-        public unsafe void CreateAsset(string inputFile, bool importCameras = false){
+        public unsafe GaussianSplatRuntimeAsset CreateAsset(string name, string inputFile, bool importCameras = false){
             GaussianSplatAsset.CameraInfo[] cameras = GaussianSplatAssetCreateTask.LoadJsonCamerasFile(inputFile, kCamerasJson, importCameras);
             NativeArray<InputSplatData> inputSplats = GaussianSplatAssetCreateTask.LoadInputSplatFile(inputFile);
 
-            CreateAsset(inputSplats, cameras);
+            return CreateAsset(name, inputSplats, cameras);
         }
 
-        public unsafe void CreateAsset(NativeArray<InputSplatData> inputSplats, GaussianSplatAsset.CameraInfo[] cameras = null)
+        public unsafe GaussianSplatRuntimeAsset CreateAsset(string name, NativeArray<InputSplatData> inputSplats, GaussianSplatAsset.CameraInfo[] cameras = null)
         {
             if (inputSplats.Length == 0)
             {
                 Debug.LogError("No splats found in input file.");
-                return;
+                return null;
             }
 
             float3 boundsMin, boundsMax;
@@ -80,12 +80,10 @@ namespace GaussianSplatting.Runtime
                 GaussianSplatAssetCreateTask.ClusterSHs(inputSplats, m_FormatSH, out clusteredSHs, out splatSHIndices, null);
             }
 
-            // GaussianSplatAsset asset = ScriptableObject.CreateInstance<GaussianSplatAsset>();
-            // asset.Initialize(inputSplats.Length, m_FormatPos, m_FormatScale, m_FormatColor, m_FormatSH, boundsMin, boundsMax, cameras);
-            // asset.name = baseName;
+            GaussianSplatRuntimeAsset asset = new GaussianSplatRuntimeAsset();
+            asset.Initialize(name, inputSplats.Length, m_FormatPos, m_FormatScale, m_FormatColor, m_FormatSH, boundsMin, boundsMax, cameras);
 
-            // var dataHash = new Hash128((uint)asset.splatCount, (uint)asset.formatVersion, 0, 0);
-            var dataHash = new Hash128();
+            var dataHash = new Hash128((uint)asset.splatCount, (uint)asset.formatVersion, 0, 0);
 
             NativeArray<byte> chunkData = default;
             NativeArray<byte> posData = default;
@@ -101,18 +99,20 @@ namespace GaussianSplatting.Runtime
             GaussianSplatAssetCreateTask.CreateOtherData(m_FormatScale, inputSplats, out otherData, ref dataHash, splatSHIndices);
             GaussianSplatAssetCreateTask.CreateColorData(m_FormatColor, inputSplats, out colorData, ref dataHash);
             GaussianSplatAssetCreateTask.CreateSHData(m_FormatSH, inputSplats, out shData, ref dataHash, clusteredSHs);
-            // asset.SetDataHash(dataHash);
+            asset.SetDataHash(dataHash);
 
             splatSHIndices.Dispose();
             clusteredSHs.Dispose();
-            inputSplats.Dispose();
+            inputSplats.Dispose();            
+            
+            asset.setAssetData(
+                useChunks ? chunkData : default,
+                posData,
+                otherData,
+                colorData,
+                shData);
 
-            // asset.SetAssetFiles(
-            //     useChunks ? AssetDatabase.LoadAssetAtPath<TextAsset>(pathChunk) : null,
-            //     AssetDatabase.LoadAssetAtPath<TextAsset>(pathPos),
-            //     AssetDatabase.LoadAssetAtPath<TextAsset>(pathOther),
-            //     AssetDatabase.LoadAssetAtPath<TextAsset>(pathCol),
-            //     AssetDatabase.LoadAssetAtPath<TextAsset>(pathSh));
+            return asset;
         }
     }
 }
