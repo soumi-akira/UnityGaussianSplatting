@@ -1,6 +1,7 @@
 using UnityEngine;
 using System.IO;
 using System;
+using System.Collections;
 using GaussianSplatting.Runtime;
 using GaussianSplatting.Runtime.Utils;
 
@@ -16,20 +17,28 @@ public class Test : MonoBehaviour
         creator.SetQualityLevel(DataQuality.Medium);
         var asset = creator.CreateAsset("test", filePath, false);
 
-        Debug.Log($"Asset Name: {asset.name}");
+        Debug.Log($"Asset Loaded");
 
         target = GetComponent<GaussianSplatRenderer>();
         
         target.InjectAsset(asset);
         
-        // 10秒後にnullアセットを注入
-        Invoke("ClearAsset", 10f);
+        StartCoroutine(CountdownAndClearAsset(3));
     }
 
-    // 10秒後に呼び出されるメソッド
+    IEnumerator CountdownAndClearAsset(int seconds)
+    {
+        for (int i = seconds; i > 0; i--)
+        {
+            Debug.Log($"Count down to clear: {i}");
+            yield return new WaitForSeconds(1f);
+        }
+        ClearAsset();
+    }
+
     void ClearAsset()
     {
-        Debug.Log("Clearing asset...");
+        Debug.Log("Clear asset");
         target.InjectAsset(null);
     }
 
