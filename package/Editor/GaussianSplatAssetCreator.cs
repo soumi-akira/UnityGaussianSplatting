@@ -235,7 +235,7 @@ namespace GaussianSplatting.Editor
             }
             catch (Exception ex)
             {
-                m_ErrorMessage = $"ファイルの読み込み中にエラーが発生しました: {ex.Message}";
+                m_ErrorMessage = $"Error occurred while reading file: {ex.Message}";
                 EditorUtility.ClearProgressBar();
                 return;
             }
