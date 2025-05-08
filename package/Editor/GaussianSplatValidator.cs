@@ -54,7 +54,7 @@ namespace GaussianSplatting.Editor
             };
 
             var cam = Camera.main;
-            var oldAsset = gaussians.asset;
+            var oldAsset = gaussians.m_Asset;
             var oldCamPos = cam.transform.localPosition;
             var oldCamRot = cam.transform.localRotation;
             var oldCamFov = cam.fieldOfView;

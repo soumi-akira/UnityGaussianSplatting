@@ -3,12 +3,13 @@
 using System;
 using Unity.Collections.LowLevel.Unsafe;
 using Unity.Mathematics;
+using Unity.Collections;
 using UnityEngine;
 using UnityEngine.Experimental.Rendering;
 
 namespace GaussianSplatting.Runtime
 {
-    public class GaussianSplatAsset : ScriptableObject
+    public class GaussianSplatAsset : ScriptableObject, IGaussianSplatAsset
     {
         public const int kCurrentVersion = 2023_10_20;
         public const int kChunkSize = 256;
@@ -127,6 +128,10 @@ namespace GaussianSplatting.Runtime
             m_SHData = dataSh;
         }
 
+        public void Dispose() {
+            // Dispose of any resources if needed
+        }
+
         public static int GetOtherSizeNoSHIndex(VectorFormat scaleFormat)
         {
             return 4 + GetVectorSize(scaleFormat);
@@ -221,11 +226,47 @@ namespace GaussianSplatting.Runtime
         public SHFormat shFormat => m_SHFormat;
         public ColorFormat colorFormat => m_ColorFormat;
 
-        public TextAsset posData => m_PosData;
-        public TextAsset colorData => m_ColorData;
-        public TextAsset otherData => m_OtherData;
-        public TextAsset shData => m_SHData;
-        public TextAsset chunkData => m_ChunkData;
+        private GaussianSplatData m_SplatPosData;
+        private GaussianSplatData m_SplatColorData;
+        private GaussianSplatData m_SplatOtherData;
+        private GaussianSplatData m_SplatSHData;
+        private GaussianSplatData m_SplatChunkData;
+
+        public IGaussianSplatData posData {
+            get {
+                if (m_SplatPosData == null)
+                    m_SplatPosData = new GaussianSplatData(m_PosData);
+                return m_SplatPosData;
+            }
+        }
+        public IGaussianSplatData colorData {
+            get {
+                if (m_SplatColorData == null)
+                    m_SplatColorData = new GaussianSplatData(m_ColorData);
+                return m_SplatColorData;
+            }
+        }
+        public IGaussianSplatData otherData {
+            get {
+                if (m_SplatOtherData == null)
+                    m_SplatOtherData = new GaussianSplatData(m_OtherData);
+                return m_SplatOtherData;
+            }
+        }
+        public IGaussianSplatData shData{
+            get {
+                if (m_SplatSHData == null)
+                    m_SplatSHData = new GaussianSplatData(m_SHData);
+                return m_SplatSHData;
+            }
+        }
+        public IGaussianSplatData chunkData {
+            get {
+                if (m_SplatChunkData == null)
+                    m_SplatChunkData = new GaussianSplatData(m_ChunkData);
+                return m_SplatChunkData;
+            }
+        }
         public CameraInfo[] cameras => m_Cameras;
 
         public struct ChunkInfo
@@ -242,6 +283,23 @@ namespace GaussianSplatting.Runtime
             public Vector3 pos;
             public Vector3 axisX, axisY, axisZ;
             public float fov;
+        }
+
+        public class GaussianSplatData : IGaussianSplatData
+        {
+            public TextAsset m_Asset;
+
+            public GaussianSplatData(TextAsset asset)
+            {
+                m_Asset = asset;
+            }
+
+            public long dataSize => m_Asset.dataSize;
+
+            public NativeArray<T> GetData<T>() where T : struct
+            {
+                return m_Asset.GetData<T>();
+            }
         }
     }
 }

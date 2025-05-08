@@ -280,7 +280,7 @@ namespace GaussianSplatting.Runtime
         internal Material m_MatDebugBoxes;
 
         internal int m_FrameCounter;
-        GaussianSplatAsset m_PrevAsset;
+        IGaussianSplatAsset m_PrevAsset;
         Hash128 m_PrevHash;
         bool m_Registered;
 
@@ -336,7 +336,15 @@ namespace GaussianSplatting.Runtime
         [field: NonSerialized] public uint editCutSplats { get; private set; }
         [field: NonSerialized] public Bounds editSelectedBounds { get; private set; }
 
-        public GaussianSplatAsset asset => m_Asset;
+        public IGaussianSplatAsset m_injectedAsset;
+
+        public IGaussianSplatAsset asset {
+            get {
+                if (m_injectedAsset != null)
+                    return m_injectedAsset;
+                return m_Asset;
+            }
+        }
         public int splatCount => m_SplatCount;
 
         enum KernelIndices
@@ -640,7 +648,7 @@ namespace GaussianSplatting.Runtime
 
         public void Update()
         {
-            var curHash = asset ? asset.dataHash : new Hash128();
+            var curHash = asset != null ? asset.dataHash : new Hash128();
             if (m_PrevAsset != asset || m_PrevHash != curHash)
             {
                 m_PrevAsset = asset;
@@ -662,7 +670,7 @@ namespace GaussianSplatting.Runtime
             Camera mainCam = Camera.main;
             if (!mainCam)
                 return;
-            if (!asset || asset.cameras == null)
+            if (asset == null || asset.cameras == null)
                 return;
 
             var selfTr = transform;
