@@ -140,7 +140,7 @@ namespace GaussianSplatting.Runtime.Utils
             }
         }
 
-        public static unsafe void ClusterSHs(NativeArray<InputSplatData> splatData, GaussianSplatAsset.SHFormat format, out NativeArray<GaussianSplatAsset.SHTableItemFloat16> shs, out NativeArray<int> shIndices, Func<float,bool> progress)
+        public static unsafe void ClusterSHs(NativeArray<InputSplatData> splatData, GaussianSplatAsset.SHFormat format, out NativeArray<GaussianSplatAsset.SHTableItemFloat16> shs, out NativeArray<int> shIndices, Func<float, bool> progress)
         {
             shs = default;
             shIndices = default;
@@ -568,7 +568,11 @@ namespace GaussianSplatting.Runtime.Utils
             {
                 Texture2D tex = new Texture2D(width, height, GraphicsFormat.R32G32B32A32_SFloat, TextureCreationFlags.DontInitializePixels | TextureCreationFlags.DontUploadUponCreate);
                 tex.SetPixelData(data, 0);
+#if UNITY_EDITOR
                 EditorUtility.CompressTexture(tex, GraphicsFormatUtility.GetTextureFormat(gfxFormat), 100);
+#else
+                tex.Compress(true);
+#endif
                 NativeArray<byte> cmpData = tex.GetPixelData<byte>(0);
                 colorData = CopyNativeArray(cmpData);
 
@@ -791,7 +795,8 @@ namespace GaussianSplatting.Runtime.Utils
             public float fy;
         }
 
-        private static NativeArray<byte> CopyNativeArray(NativeArray<byte> org) {
+        private static NativeArray<byte> CopyNativeArray(NativeArray<byte> org)
+        {
             NativeArray<byte> dst = new NativeArray<byte>(org.Length, Allocator.Persistent);
             dst.CopyFrom(org);
             return dst;
